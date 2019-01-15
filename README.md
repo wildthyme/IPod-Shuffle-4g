@@ -1,11 +1,11 @@
-# IPod Shuffle 4g Script
+# iPod Shuffle 4g Script
 
 ## ipod-shuffle-4g.py
 
-Python script for building the Track and Playlist database for the newer gen IPod Shuffle.
+Python script for building the Track and Playlist database for the newer gen iPod Shuffle.
 Forked from the [shuffle-db-ng project](https://code.google.com/p/shuffle-db-ng/)
 
-Just put your audio files into the mass storage of your IPod and shuffle.py will do the rest.
+Just put your audio files into the mass storage of your iPod and shuffle.py will do the rest.
 ```
 $ ./ipod-shuffle-4g.py --help
 usage: ipod-shuffle-4g.py [-h] [-t] [-p] [-u] [-g TRACK_GAIN]
@@ -13,10 +13,10 @@ usage: ipod-shuffle-4g.py [-h] [-t] [-p] [-u] [-g TRACK_GAIN]
                           path
 
 Python script for building the Track and Playlist database for the newer gen
-IPod Shuffle. Version 1.4
+iPod Shuffle. Version 1.4
 
 positional arguments:
-  path                  Path to the IPod's root directory
+  path                  Path to the iPod's root directory
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -32,7 +32,7 @@ optional arguments:
                         loud even on minimal player volume
   -d [AUTO_DIR_PLAYLISTS], --auto-dir-playlists [AUTO_DIR_PLAYLISTS]
                         Generate automatic playlists for each folder
-                        recursively inside "IPod_Control/Music/". You can
+                        recursively inside "iPod_Control/Music/". You can
                         optionally limit the depth: 0=root, 1=artist, 2=album,
                         n=subfoldername, default=-1 (No Limit).
   -i [ID3_TEMPLATE], --auto-id3-playlists [ID3_TEMPLATE]
@@ -56,6 +56,7 @@ This script requires:
 Optional Voiceover support
 * [eSpeak](http://espeak.sourceforge.net/)
 * [PicoSpeaker](http://picospeaker.tk/readme.php)
+* [gTTS](https://github.com/pndurette/gTTS) (requires ffmpeg)
 * [RHVoice (master branch, 3e31edced402a08771d2c48c73213982cbe9333e)](https://github.com/Olga-Yakovleva/RHVoice) -- (Russian files only)
 * [SoX](http://sox.sourceforge.net) -- (Russian files)
 
@@ -81,7 +82,7 @@ References to the overlays above: [ikelos](http://git.overlays.gentoo.org/gitweb
 
 ##Tips and Tricks
 
-#### Disable trash for IPod
+#### Disable trash for iPod
 To avoid that linux moves deleted files into trash you can create an empty file `.Trash-1000`.
 This forces linux to delete the files permanently instead of moving them to the trash.
 Of course you can also use `shift + delete` to permanently delete files without this trick.
@@ -92,40 +93,40 @@ The file can be found in the [extras](extras) folder.
 
 #### Use Rhythmbox to manage your music and playlists
 As described [in the blog post](https://nims11.wordpress.com/2013/10/12/ipod-shuffle-4g-under-linux/)
-you can use Rythmbox to sync your personal music library to your IPod
+you can use Rhythmbox to sync your personal music library to your iPod
 but still make use of the additional features this script provides (such as voiceover).
 
-Simply place a file called `.is_audio_player` into the root directory of your IPod and add the following content:
+Simply place a file called `.is_audio_player` into the root directory of your iPod and add the following content:
 ```
 name=&quot;Name's IPOD&quot;
 audio_folders=iPod_Control/Music/
 ```
 The file can be found in the [extras](extras) folder.
 
-Now disable the IPod plugin of Rhythmbox and enable the MTP plugin instead.
-You can use Rythmbox now to generate playlists and sync them to your IPod.
+Now disable the iPod plugin of Rhythmbox and enable the MTP plugin instead.
+You can use Rhythmbox now to generate playlists and sync them to your iPod.
 The script will recognize the .pls playlists and generate a proper iTunesSD file.
 
 ##### Known Rhythmbox syncing issues
 * Creating playlists with names like `K.I.Z.` will fail, because the FAT Filesystem does not support a dot `.` at the end of a directory/file.
 * Sometimes bad ID3 tags can also cause corrupted playlists.
 
-In all cases you can try to update Rythmbox to the latest version, sync again or fix the wrong filenames yourself.
+In all cases you can try to update Rhythmbox to the latest version, sync again or fix the wrong filenames yourself.
 
-#### Carry the script with your IPod
+#### Carry the script with your iPod
 If you want to use this script on different computers it makes sense
-to simply copy the script into the IPod's root directory.
+to simply copy the script into the iPod's root directory.
 
-#### Format/Restore/Recover IPod
-([#41](https://github.com/nims11/IPod-Shuffle-4g/issues/41)) If you formatted your IPod wrong and lost all data you can still recover it.
+#### Format/Restore/Recover iPod
+([#41](https://github.com/nims11/IPod-Shuffle-4g/issues/41)) If you formatted your iPod wrong and lost all data you can still recover it.
 It is important to **not use MBR/GPT**. You need to directly create a **Fat16 Filesystem**:
 
 ```bash
 sudo mkfs.vfat -I -F 16 -n IPOD /dev/sdX
 ```
 
-Run this script to generate the new database. All missing sound files should be regenrated by the IPod on next use.
-Your IPod should work and play music again now.
+Run this script to generate the new database. All missing sound files should be regenrated by the iPod on next use.
+Your iPod should work and play music again now.
 
 ## TODO
 * Last.fm Scrobbler
@@ -135,8 +136,8 @@ Your IPod should work and play music again now.
 * [shuffle3db specification](docs/iTunesSD3gen.md)
 * [Using shuffle.py and Rhythmbox for easy syncing of playlists and songs](http://nims11.wordpress.com/2013/10/12/ipod-shuffle-4g-under-linux/)
 * [gtkpod](http://www.gtkpod.org/wiki/Home)
-* [German Ubuntu IPod tutorial](https://wiki.ubuntuusers.de/iPod/)
-* [IPod management apps](https://wiki.archlinux.org/index.php/IPod#iPod_management_apps)
+* [German Ubuntu iPod tutorial](https://wiki.ubuntuusers.de/iPod/)
+* [iPod management apps](https://wiki.archlinux.org/index.php/IPod#iPod_management_apps)
 
 The original shuffle3db website went offline. This repository contains a copy of the information inside the `docs` folder.
 Original data can be found via [wayback machine](https://web.archive.org/web/20131016014401/http://shuffle3db.wikispaces.com/iTunesSD3gen).
@@ -181,7 +182,7 @@ Original data can be found via [wayback machine](https://web.archive.org/web/201
 1.1 Release (11.10.2013 - 23.01.2016)
 * Fixes from nims11 fork
 * Option to disable voiceover
-* Initialize the IPod Directory tree
+* Initialize the iPod Directory tree
 * Using the --rename-unicode flag
   filenames with strange characters and different language are renamed
   which avoids the script to crash with a Unicode Error

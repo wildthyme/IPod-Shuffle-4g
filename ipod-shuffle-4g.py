@@ -15,6 +15,7 @@ import shutil
 import re
 import tempfile
 import signal
+from plumbum.cmd import gtts_cli, ffmpeg
 
 audio_ext = (".mp3", ".m4a", ".m4b", ".m4p", ".aa", ".wav")
 list_ext = (".pls", ".m3u")
@@ -92,11 +93,18 @@ def group_tracks_by_id3_template(tracks, template):
     return sorted(grouped_tracks_dict.items())
 
 class Text2Speech(object):
-    valid_tts = {'pico2wave': True, 'RHVoice': True, 'espeak': True}
+    valid_tts = {'gTTS': True, 'pico2wave': True, 'RHVoice': True, 'espeak': True}
 
     @staticmethod
     def check_support():
         voiceoverAvailable = False
+
+        # Check for gTTS voiceover
+        if not exec_exists_in_path("gtts-cli") or not exec_exists_in_path("ffmpeg"):
+            Text2Speech.valid_tts['gTTS'] = False
+            print "Warning: gTTS or ffmpeg not found, voicever won't be generated using it."
+        else:
+            voiceoverAvailable = True
 
         # Check for pico2wave voiceover
         if not exec_exists_in_path("pico2wave"):
@@ -138,7 +146,9 @@ class Text2Speech(object):
         if lang == "ru-RU":
             return Text2Speech.rhvoice(out_wav_path, text)
         else:
-            if Text2Speech.pico2wave(out_wav_path, text):
+            if Text2Speech.gTTS(out_wav_path, text):
+                return True
+            elif Text2Speech.pico2wave(out_wav_path, text):
                 return True
             elif Text2Speech.espeak(out_wav_path, text):
                 return True
@@ -152,6 +162,13 @@ class Text2Speech(object):
         if re.search(u"[А-Яа-я]", unicodetext) is not None:
             lang = 'ru-RU'
         return lang
+
+    @staticmethod
+    def gTTS(out_wav_path, unicodetext):
+        if not Text2Speech.valid_tts['gTTS']:
+            return False
+        (gtts_cli[unicodetext] | ffmpeg["-i", "-", out_wav_path])()
+        return True
 
     @staticmethod
     def pico2wave(out_wav_path, unicodetext):
@@ -458,7 +475,7 @@ class Playlist(Record):
     def set_master(self, tracks):
         # By default use "All Songs" builtin voiceover (dbid all zero)
         # Else generate alternative "All Songs" to fit the speaker voice of other playlists
-        if self.playlist_voiceover and (Text2Speech.valid_tts['pico2wave'] or Text2Speech.valid_tts['espeak']):
+        if self.playlist_voiceover and (Text2Speech.valid_tts['gTTS'] or Text2Speech.valid_tts['pico2wave'] or Text2Speech.valid_tts['espeak']):
             self["dbid"] = hashlib.md5("masterlist").digest()[:8] #pylint: disable-msg=E1101
             self.text_to_speech("All songs", self["dbid"], True)
         self["listtype"] = 1

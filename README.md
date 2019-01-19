@@ -50,9 +50,8 @@ optional arguments:
 #### Dependencies
 
 This script requires:
-* [Python 2.7](http://www.python.org/download/releases/2.7/)
-* [Mutagen](https://code.google.com/p/mutagen/)
-* [plumbum](https://plumbum.readthedocs.io/en/latest/)
+* Python 3
+* The modules `mutagen`, `plumbum`, and `unidecode`
 
 Optional Voiceover support
 * [eSpeak](http://espeak.sourceforge.net/)

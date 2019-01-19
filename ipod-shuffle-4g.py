@@ -1,8 +1,8 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 import sys
 import struct
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import os
 import hashlib
 import mutagen
@@ -16,6 +16,7 @@ import re
 import tempfile
 import signal
 from plumbum.cmd import gtts_cli, ffmpeg
+from unidecode import unidecode
 
 audio_ext = (".mp3", ".m4a", ".m4b", ".m4p", ".aa", ".wav")
 list_ext = (".pls", ".m3u")
@@ -40,7 +41,7 @@ def hash_error_unicode(item):
 def validate_unicode(path):
     path_list = path.split('/')
     last_raise = False
-    for i in xrange(len(path_list)):
+    for i in range(len(path_list)):
         if raises_unicode_error(path_list[i]):
             path_list[i] = hash_error_unicode(path_list[i])
             last_raise = True
@@ -62,11 +63,11 @@ def splitpath(path):
     return path.split(os.sep)
 
 def get_relpath(path, basepath):
-    commonprefix = os.sep.join(os.path.commonprefix(map(splitpath, [path, basepath])))
+    commonprefix = os.sep.join(os.path.commonprefix(list(map(splitpath, [path, basepath]))))
     return os.path.relpath(path, commonprefix)
 
 def is_path_prefix(prefix, path):
-    return prefix == os.sep.join(os.path.commonprefix(map(splitpath, [prefix, path])))
+    return prefix == os.sep.join(os.path.commonprefix(list(map(splitpath, [prefix, path]))))
 
 def group_tracks_by_id3_template(tracks, template):
     grouped_tracks_dict = {}
@@ -102,28 +103,28 @@ class Text2Speech(object):
         # Check for gTTS voiceover
         if not exec_exists_in_path("gtts-cli") or not exec_exists_in_path("ffmpeg"):
             Text2Speech.valid_tts['gTTS'] = False
-            print "Warning: gTTS or ffmpeg not found, voicever won't be generated using it."
+            print("Warning: gTTS or ffmpeg not found, voiceover won't be generated using it.")
         else:
             voiceoverAvailable = True
 
         # Check for pico2wave voiceover
         if not exec_exists_in_path("pico2wave"):
             Text2Speech.valid_tts['pico2wave'] = False
-            print "Warning: pico2wave not found, voicever won't be generated using it."
+            print("Warning: pico2wave not found, voiceover won't be generated using it.")
         else:
             voiceoverAvailable = True
 
         # Check for espeak voiceover
         if not exec_exists_in_path("espeak"):
             Text2Speech.valid_tts['espeak'] = False
-            print "Warning: espeak not found, voicever won't be generated using it."
+            print("Warning: espeak not found, voiceover won't be generated using it.")
         else:
             voiceoverAvailable = True
 
         # Check for Russian RHVoice voiceover
         if not exec_exists_in_path("RHVoice"):
             Text2Speech.valid_tts['RHVoice'] = False
-            print "Warning: RHVoice not found, Russian voicever won't be generated."
+            print("Warning: RHVoice not found, Russian voiceover won't be generated.")
         else:
             voiceoverAvailable = True
 
@@ -140,8 +141,8 @@ class Text2Speech(object):
             return True
 
         # ensure we deal with unicode later
-        if not isinstance(text, unicode):
-            text = unicode(text, 'utf-8')
+        if not isinstance(text, str):
+            text = str(text, 'utf-8')
         lang = Text2Speech.guess_lang(text)
         if lang == "ru-RU":
             return Text2Speech.rhvoice(out_wav_path, text)
@@ -159,7 +160,7 @@ class Text2Speech(object):
     @staticmethod
     def guess_lang(unicodetext):
         lang = 'en-GB'
-        if re.search(u"[А-Яа-я]", unicodetext) is not None:
+        if re.search("[А-Яа-я]", unicodetext) is not None:
             lang = 'ru-RU'
         return lang
 
@@ -213,7 +214,7 @@ class Record(object):
         self.trackgain = parent.trackgain
 
     def __getitem__(self, item):
-        if item not in self._struct.keys():
+        if item not in list(self._struct.keys()):
             raise KeyError
         return self._fields.get(item, self._struct[item][1])
 
@@ -221,8 +222,8 @@ class Record(object):
         self._fields[item] = value
 
     def construct(self):
-        output = ""
-        for i in self._struct.keys():
+        output = b""
+        for i in list(self._struct.keys()):
             (fmt, default) = self._struct[i]
             if fmt == "4s":
                 fmt, default = "I", int(binascii.hexlify(default), 16)
@@ -232,14 +233,14 @@ class Record(object):
     def text_to_speech(self, text, dbid, playlist = False):
         if self.track_voiceover and not playlist or self.playlist_voiceover and playlist:
             # Create the voiceover wav file
-            fn = "".join(["{0:02X}".format(ord(x)) for x in reversed(dbid)])
+            fn = "".join(["{0:02X}".format(x) for x in reversed(dbid)])
             path = os.path.join(self.base, "iPod_Control", "Speakable", "Tracks" if not playlist else "Playlists", fn + ".wav")
             return Text2Speech.text2speech(path, text)
         return False
 
     def path_to_ipod(self, filename):
         if os.path.commonprefix([os.path.abspath(filename), self.base]) != self.base:
-            raise IOError("Cannot get Ipod filename, since file is outside the IPOD path")
+            raise IOError("Cannot get iPod filename, since file is outside the IPOD path")
         baselen = len(self.base)
         if self.base.endswith(os.path.sep):
             baselen -= 1
@@ -282,7 +283,7 @@ class TunesSD(Record):
         self.track_header = TrackHeader(self)
         self.play_header = PlaylistHeader(self)
         self._struct = collections.OrderedDict([
-                           ("header_id", ("4s", "shdb")),
+                           ("header_id", ("4s", b"shdb")),
                            ("unknown1", ("I", 0x02000003)),
                            ("total_length", ("I", 64)),
                            ("total_number_of_tracks", ("I", 0)),
@@ -294,7 +295,7 @@ class TunesSD(Record):
                            ("total_tracks_without_podcasts", ("I", 0)),
                            ("track_header_offset", ("I", 64)),
                            ("playlist_header_offset", ("I", 0)),
-                           ("unknown4", ("20s", "\x00" * 20)),
+                           ("unknown4", ("20s", b"\x00" * 20)),
                                                ])
 
     def construct(self):
@@ -319,7 +320,7 @@ class TrackHeader(Record):
         self.base_offset = 0
         Record.__init__(self, parent)
         self._struct = collections.OrderedDict([
-                           ("header_id", ("4s", "shth")),
+                           ("header_id", ("4s", b"shth")),
                            ("total_length", ("I", 0)),
                            ("number_of_tracks", ("I", 0)),
                            ("unknown1", ("Q", 0)),
@@ -331,7 +332,7 @@ class TrackHeader(Record):
         output = Record.construct(self)
 
         # Construct the underlying tracks
-        track_chunk = ""
+        track_chunk = b""
         for i in self.tracks:
             track = Track(self)
             verboseprint("[*] Adding track", i)
@@ -345,13 +346,13 @@ class Track(Record):
     def __init__(self, parent):
         Record.__init__(self, parent)
         self._struct = collections.OrderedDict([
-                           ("header_id", ("4s", "shtr")),
+                           ("header_id", ("4s", b"shtr")),
                            ("header_length", ("I", 0x174)),
                            ("start_at_pos_ms", ("I", 0)),
                            ("stop_at_pos_ms", ("I", 0)),
                            ("volume_gain", ("I", int(self.trackgain))),
                            ("filetype", ("I", 1)),
-                           ("filename", ("256s", "\x00" * 256)),
+                           ("filename", ("256s", b"\x00" * 256)),
                            ("bookmark", ("I", 0)),
                            ("dontskip", ("B", 1)),
                            ("remember", ("B", 0)),
@@ -369,11 +370,11 @@ class Track(Record):
                            ("unknown4", ("Q", 0)),
                            ("dbid", ("8s", 0)),
                            ("artistid", ("I", 0)),
-                           ("unknown5", ("32s", "\x00" * 32)),
+                           ("unknown5", ("32s", b"\x00" * 32)),
                            ])
 
     def populate(self, filename):
-        self["filename"] = self.path_to_ipod(filename)
+        self["filename"] = unidecode(self.path_to_ipod(filename)).encode('ascii')
 
         if os.path.splitext(filename)[1].lower() in (".m4a", ".m4b", ".m4p", ".aa"):
             self["filetype"] = 2
@@ -383,19 +384,19 @@ class Track(Record):
         try:
             audio = mutagen.File(filename, easy = True)
         except:
-            print "Error calling mutagen. Possible invalid filename/ID3Tags (hyphen in filename?)"
+            print("Error calling mutagen. Possible invalid filename/ID3Tags (hyphen in filename?)")
         if audio:
-            # Note: Rythmbox IPod plugin sets this value always 0.
+            # Note: Rhythmbox iPod plugin sets this value always 0.
             self["stop_at_pos_ms"] = int(audio.info.length * 1000)
 
-            artist = audio.get("artist", [u"Unknown"])[0]
+            artist = audio.get("artist", ["Unknown"])[0]
             if artist in self.artists:
                 self["artistid"] = self.artists.index(artist)
             else:
                 self["artistid"] = len(self.artists)
                 self.artists.append(artist)
 
-            album = audio.get("album", [u"Unknown"])[0]
+            album = audio.get("album", ["Unknown"])[0]
             if album in self.albums:
                 self["albumid"] = self.albums.index(album)
             else:
@@ -403,10 +404,10 @@ class Track(Record):
                 self.albums.append(album)
 
             if audio.get("title", "") and audio.get("artist", ""):
-                text = u" - ".join(audio.get("title", u"") + audio.get("artist", u""))
+                text = " - ".join(audio.get("title", "") + audio.get("artist", ""))
 
         # Handle the VoiceOverData
-        if isinstance(text, unicode):
+        if isinstance(text, str):
             text = text.encode('utf-8', 'ignore')
         self["dbid"] = hashlib.md5(text).digest()[:8] #pylint: disable-msg=E1101
         self.text_to_speech(text, self["dbid"])
@@ -416,13 +417,13 @@ class PlaylistHeader(Record):
         self.base_offset = 0
         Record.__init__(self, parent)
         self._struct = collections.OrderedDict([
-                          ("header_id", ("4s", "shph")),
+                          ("header_id", ("4s", b"shph")),
                           ("total_length", ("I", 0)),
                           ("number_of_playlists", ("I", 0)),
-                          ("number_of_non_podcast_lists", ("2s", "\xFF\xFF")),
-                          ("number_of_master_lists", ("2s", "\x01\x00")),
-                          ("number_of_non_audiobook_lists", ("2s", "\xFF\xFF")),
-                          ("unknown2", ("2s", "\x00" * 2)),
+                          ("number_of_non_podcast_lists", ("2s", b"\xFF\xFF")),
+                          ("number_of_master_lists", ("2s", b"\x01\x00")),
+                          ("number_of_non_audiobook_lists", ("2s", b"\xFF\xFF")),
+                          ("unknown2", ("2s", b"\x00" * 2)),
                                               ])
 
     def construct(self, tracks): #pylint: disable-msg=W0221
@@ -443,7 +444,7 @@ class PlaylistHeader(Record):
                 playlistcount += 1
                 chunks += [construction]
             else:
-                print "Error: Playlist does not contain a single track. Skipping playlist."
+                print("Error: Playlist does not contain a single track. Skipping playlist.")
 
         self["number_of_playlists"] = playlistcount
         self["total_length"] = 0x14 + (self["number_of_playlists"] * 4)
@@ -456,27 +457,27 @@ class PlaylistHeader(Record):
             output += struct.pack("I", offset)
             offset += len(chunks[i])
 
-        return output + "".join(chunks)
+        return output + b"".join(chunks)
 
 class Playlist(Record):
     def __init__(self, parent):
         self.listtracks = []
         Record.__init__(self, parent)
         self._struct = collections.OrderedDict([
-                          ("header_id", ("4s", "shpl")),
+                          ("header_id", ("4s", b"shpl")),
                           ("total_length", ("I", 0)),
                           ("number_of_songs", ("I", 0)),
                           ("number_of_nonaudio", ("I", 0)),
-                          ("dbid", ("8s", "\x00" * 8)),
+                          ("dbid", ("8s", b"\x00" * 8)),
                           ("listtype", ("I", 2)),
-                          ("unknown1", ("16s", "\x00" * 16))
+                          ("unknown1", ("16s", b"\x00" * 16))
                                               ])
 
     def set_master(self, tracks):
         # By default use "All Songs" builtin voiceover (dbid all zero)
         # Else generate alternative "All Songs" to fit the speaker voice of other playlists
         if self.playlist_voiceover and (Text2Speech.valid_tts['gTTS'] or Text2Speech.valid_tts['pico2wave'] or Text2Speech.valid_tts['espeak']):
-            self["dbid"] = hashlib.md5("masterlist").digest()[:8] #pylint: disable-msg=E1101
+            self["dbid"] = hashlib.md5(b"masterlist").digest()[:8] #pylint: disable-msg=E1101
             self.text_to_speech("All songs", self["dbid"], True)
         self["listtype"] = 1
         self.listtracks = tracks
@@ -497,7 +498,7 @@ class Playlist(Record):
             dataarr = i.strip().split("=", 1)
             if dataarr[0].lower().startswith("file"):
                 num = int(dataarr[0][4:])
-                filename = urllib.unquote(dataarr[1]).strip()
+                filename = urllib.parse.unquote(dataarr[1]).strip()
                 if filename.lower().startswith('file://'):
                     filename = filename[7:]
                 if self.rename:
@@ -562,7 +563,7 @@ class Playlist(Record):
                 text = os.path.splitext(os.path.basename(filename))[0]
 
         # Handle the VoiceOverData
-        if isinstance(text, unicode):
+        if isinstance(text, str):
             text = text.encode('utf-8', 'ignore')
         self["dbid"] = hashlib.md5(text).digest()[:8] #pylint: disable-msg=E1101
         self.text_to_speech(text, self["dbid"], True)
@@ -571,7 +572,7 @@ class Playlist(Record):
         self["total_length"] = 44 + (4 * len(self.listtracks))
         self["number_of_songs"] = 0
 
-        chunks = ""
+        chunks = b""
         for i in self.listtracks:
             path = self.ipod_to_path(i)
             position = -1
@@ -580,8 +581,8 @@ class Playlist(Record):
             except:
                 # Print an error if no track was found.
                 # Empty playlists are handeled in the PlaylistHeader class.
-                print "Error: Could not find track \"" + path + "\"."
-                print "Maybe its an invalid FAT filesystem name. Please fix your playlist. Skipping track."
+                print("Error: Could not find track \"" + path + "\".")
+                print("Maybe its an invalid FAT filesystem name. Please fix your playlist. Skipping track.")
             if position > -1:
                 chunks += struct.pack("I", position)
                 self["number_of_songs"] += 1
@@ -613,11 +614,11 @@ class Shuffler(object):
           make_dir_if_absent(os.path.join(self.path, dirname))
 
     def dump_state(self):
-        print "Shuffle DB state"
-        print "Tracks", self.tracks
-        print "Albums", self.albums
-        print "Artists", self.artists
-        print "Playlists", self.lists
+        print("Shuffle DB state")
+        print("Tracks", self.tracks)
+        print("Albums", self.albums)
+        print("Artists", self.artists)
+        print("Playlists", self.lists)
 
     def populate(self):
         self.tunessd = TunesSD(self)
@@ -652,14 +653,14 @@ class Shuffler(object):
             try:
                 f.write(self.tunessd.construct())
             except IOError as e:
-                print "I/O error({0}): {1}".format(e.errno, e.strerror)
-                print "Error: Writing iPod database failed."
+                print("I/O error({0}): {1}".format(e.errno, e.strerror))
+                print("Error: Writing iPod database failed.")
                 sys.exit(1)
-        print "Database written successfully:"
-        print "Tracks", len(self.tracks)
-        print "Albums", len(self.albums)
-        print "Artists", len(self.artists)
-        print "Playlists", len(self.lists)
+        print("Database written successfully:")
+        print("Tracks", len(self.tracks))
+        print("Albums", len(self.albums))
+        print("Artists", len(self.artists))
+        print("Playlists", len(self.lists))
 
 #
 # Read all files from the directory
@@ -678,7 +679,7 @@ def check_unicode(path):
                 if raises_unicode_error(item):
                     src = os.path.join(path, item)
                     dest = os.path.join(path, hash_error_unicode(item)) + os.path.splitext(item)[1].lower()
-                    print 'Renaming %s -> %s' % (src, dest)
+                    print('Renaming %s -> %s' % (src, dest))
                     os.rename(src, dest)
         else:
             ret_flag = (check_unicode(os.path.join(path, item)) or ret_flag)
@@ -686,7 +687,7 @@ def check_unicode(path):
                 src = os.path.join(path, item)
                 new_name = hash_error_unicode(item)
                 dest = os.path.join(path, new_name)
-                print 'Renaming %s -> %s' % (src, dest)
+                print('Renaming %s -> %s' % (src, dest))
                 os.rename(src, dest)
     return ret_flag
 
@@ -702,15 +703,15 @@ def nonnegative_int(string):
 
 def checkPathValidity(path):
     if not os.path.isdir(result.path):
-        print "Error finding IPod directory. Maybe it is not connected or mounted?"
+        print("Error finding iPod directory. Maybe it is not connected or mounted?")
         sys.exit(1)
 
     if not os.access(result.path, os.W_OK):
-        print 'Unable to get write permissions in the IPod directory'
+        print('Unable to get write permissions in the iPod directory')
         sys.exit(1)
 
 def handle_interrupt(signal, frame):
-    print "Interrupt detected, exiting..."
+    print("Interrupt detected, exiting...")
     sys.exit(1)
 
 if __name__ == '__main__':
@@ -718,7 +719,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description=
     'Python script for building the Track and Playlist database '
-    'for the newer gen IPod Shuffle. Version 1.4')
+    'for the newer gen iPod Shuffle. Version 1.4')
 
     parser.add_argument('-t', '--track-voiceover', action='store_true',
     help='Enable track voiceover feature')
@@ -736,7 +737,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-d', '--auto-dir-playlists', type=int, default=None, const=-1, nargs='?',
     help='Generate automatic playlists for each folder recursively inside '
-    '"IPod_Control/Music/". You can optionally limit the depth: '
+    '"iPod_Control/Music/". You can optionally limit the depth: '
     '0=root, 1=artist, 2=album, n=subfoldername, default=-1 (No Limit).')
 
     parser.add_argument('-i', '--auto-id3-playlists', type=str, default=None, metavar='ID3_TEMPLATE', const='{artist}', nargs='?',
@@ -750,7 +751,7 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose', action='store_true',
     help='Show verbose output of database generation.')
 
-    parser.add_argument('path', help='Path to the IPod\'s root directory')
+    parser.add_argument('path', help='Path to the iPod\'s root directory')
 
     result = parser.parse_args()
 
@@ -762,8 +763,8 @@ if __name__ == '__main__':
             # Print each argument separately so caller doesn't need to
             # stuff everything to be printed into a single string
             for arg in args:
-               print arg,
-            print
+               print(arg, end=' ')
+            print()
     else:
         verboseprint = lambda *a: None      # do-nothing function
 
@@ -776,7 +777,7 @@ if __name__ == '__main__':
     verboseprint("Track voiceover requested:", result.track_voiceover)
     if (result.track_voiceover or result.playlist_voiceover):
         if not Text2Speech.check_support():
-            print "Error: Did not find any voiceover program. Voiceover disabled."
+            print("Error: Did not find any voiceover program. Voiceover disabled.")
             result.track_voiceover = False
             result.playlist_voiceover = False
         else:
